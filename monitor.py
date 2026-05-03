@@ -18,9 +18,10 @@ async def get_posts():
 
         await page.goto("https://www.pharmmaker.com/intro")
         await page.wait_for_load_state("networkidle")
+        await page.wait_for_selector("input[name='user_id']", timeout=15000)
         await page.fill("input[name='user_id']", PHARMMAKER_ID)
         await page.fill("input[name='password']", PHARMMAKER_PW)
-        await page.click("button[type='submit']")
+        await page.click("input[type='submit']")
         await page.wait_for_load_state("networkidle")
 
         await page.goto("https://www.pharmmaker.com/P_Trades")
