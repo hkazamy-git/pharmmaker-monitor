@@ -44,3 +44,13 @@ jobs:
         with:
           path: last_state.json
           key: monitor-state
+
+      - name: 실패시 텔레그램 알림
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+          -d chat_id="${TELEGRAM_CHAT_ID}" \
+          -d text="⚠️ pharmmaker 모니터링 오류 발생! 깃허브 Actions 확인 필요"
