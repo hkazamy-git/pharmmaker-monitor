@@ -4,6 +4,7 @@ import os
 import json
 import hashlib
 import requests
+import base64
 
 PHARMMAKER_ID = os.environ["PHARMMAKER_ID"]
 PHARMMAKER_PW = os.environ["PHARMMAKER_PW"]
@@ -16,68 +17,31 @@ async def get_posts():
         browser = await p.chromium.launch()
         page = await browser.new_page()
 
+        print("페이지 이동 중...")
         await page.goto("https://www.pharmmaker.com/intro")
-        await page.wait_for_load_state("networkidle")
-        await page.wait_for_selector("input[name='user_id']", timeout=15000)
-        await page.fill("input[name='user_id']", PHARMMAKER_ID)
-        await page.fill("input[name='password']", PHARMMAKER_PW)
-        await page.click("input[type='submit']")
-        await page.wait_for_load_state("networkidle")
+        await page.wait_for_timeout(5000)  # 5초 대기
 
-        await page.goto("https://www.pharmmaker.com/P_Trades")
-        await page.wait_for_load_state("networkidle")
+        # 스크린샷 찍기
+        await page.screenshot(path="screenshot.png")
+        print("스크린샷 저장완료")
 
-        posts = []
-        rows = await page.query_selector_all("table tr")
-        for row in rows:
-            link_el = await row.query_selector("td a")
-            if link_el:
-                title = await link_el.inner_text()
-                href = await link_el.get_attribute("href")
-                if href and title.strip():
-                    if href.startswith("/"):
-                        href = "https://www.pharmmaker.com" + href
-                    posts.append({"title": title.strip(), "link": href})
+        # 페이지 HTML 출력
+        html = await page.content()
+        print("HTML 일부:", html[:2000])
+
+        # input 찾기 시도
+        inputs = await page.query_selector_all("input")
+        print(f"input 개수: {len(inputs)}")
+        for inp in inputs:
+            name = await inp.get_attribute("name")
+            id_ = await inp.get_attribute("id")
+            type_ = await inp.get_attribute("type")
+            print(f"input - name:{name}, id:{id_}, type:{type_}")
 
         await browser.close()
-        return posts
-
-def get_hash(posts):
-    return hashlib.md5(json.dumps(posts, ensure_ascii=False).encode()).hexdigest()
-
-def send_telegram(message):
-    requests.post(
-        f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-        data={"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"}
-    )
+        return []
 
 async def main():
-    posts = await get_posts()
-    current_hash = get_hash(posts)
-
-    if os.path.exists(STATE_FILE):
-        with open(STATE_FILE) as f:
-            data = json.load(f)
-        last_hash = data.get("hash", "")
-        last_posts = data.get("posts", [])
-    else:
-        last_hash = ""
-        last_posts = []
-
-    if current_hash != last_hash:
-        new_posts = [p for p in posts if p not in last_posts]
-        if new_posts:
-            msg = "🏥 <b>pharmmaker 약국매매 새 글 알림!</b>\n\n"
-            for p in new_posts:
-                msg += f"📌 {p['title']}\n🔗 {p['link']}\n\n"
-            send_telegram(msg)
-            print("알림 전송 완료!")
-        else:
-            print("변경 감지됐지만 새 글 없음")
-    else:
-        print("변경 없음")
-
-    with open(STATE_FILE, "w") as f:
-        json.dump({"hash": current_hash, "posts": posts}, f, ensure_ascii=False)
+    await get_posts()
 
 asyncio.run(main())
