@@ -16,7 +16,7 @@ async def get_posts():
         browser = await p.chromium.launch()
         page = await browser.new_page()
 
-        await page.goto("https://www.pharmmaker.com/login")
+        await page.goto("https://www.pharmmaker.com/intro")
         await page.wait_for_load_state("networkidle")
         await page.fill("input[name='user_id']", PHARMMAKER_ID)
         await page.fill("input[name='password']", PHARMMAKER_PW)
